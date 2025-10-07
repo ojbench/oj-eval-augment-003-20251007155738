@@ -2,7 +2,9 @@
 #include <string>
 #include <vector>
 #include <map>
+#include <unordered_map>
 #include <set>
+#include <unordered_set>
 #include <algorithm>
 #include <sstream>
 
@@ -36,7 +38,7 @@ struct Team {
 
 class ICPCSystem {
 private:
-    map<string, Team> teams;
+    unordered_map<string, Team> teams;
     vector<string> teamOrder;
     bool started = false;
     bool frozen = false;
@@ -44,7 +46,7 @@ private:
     int problemCount = 0;
     vector<string> problemNames;
     int freezeTime = -1;
-    set<string> teamsWithFrozenProblems;  // Track teams with frozen problems
+    unordered_set<string> teamsWithFrozenProblems;  // Track teams with frozen problems
     
     void calculateTeamStats(Team& team, bool includeFrozen) {
         team.solvedCount = 0;
