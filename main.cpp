@@ -34,6 +34,7 @@ struct Team {
     vector<int> solveTimes;
     int ranking = 0;
     vector<Submission> allSubmissions;  // All submissions in order
+    int frozenProblemCount = 0;  // Count of problems with frozen submissions
 };
 
 class ICPCSystem {
@@ -182,6 +183,9 @@ public:
         team.allSubmissions.push_back(sub);  // Also add to team's global submission list
 
         if (frozen && !ps.solved) {
+            if (ps.frozenSubmissions == 0) {
+                team.frozenProblemCount++;
+            }
             ps.frozenSubmissions++;
             ps.frozenSubs.push_back(sub);
             teamsWithFrozenProblems.insert(teamName);
@@ -212,6 +216,7 @@ public:
         teamsWithFrozenProblems.clear();
 
         for (auto& name : teamOrder) {
+            teams[name].frozenProblemCount = 0;
             for (auto& p : teams[name].problems) {
                 if (!p.second.solved) {
                     p.second.wrongBeforeFreeze = p.second.wrongAttempts;
@@ -303,15 +308,9 @@ public:
             ps.frozenSubmissions = 0;
             ps.frozenSubs.clear();
 
-            // Check if team still has frozen problems
-            bool stillHasFrozen = false;
-            for (auto& p : lowestTeam->problems) {
-                if (p.second.frozenSubmissions > 0) {
-                    stillHasFrozen = true;
-                    break;
-                }
-            }
-            if (!stillHasFrozen) {
+            // Update frozen problem count
+            lowestTeam->frozenProblemCount--;
+            if (lowestTeam->frozenProblemCount == 0) {
                 teamsWithFrozenProblems.erase(lowestTeam->name);
             }
 
