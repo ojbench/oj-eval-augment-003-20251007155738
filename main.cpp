@@ -316,10 +316,17 @@ public:
             calculateTeamStats(*lowestTeam, false);
 
             // Find new position using binary search
+            int left = 0, right = lowestIdx;
             int newIdx = lowestIdx;
-            while (newIdx > 0 && compareTeams(*lowestTeam, *sortedTeams[newIdx - 1])) {
-                newIdx--;
+            while (left < right) {
+                int mid = (left + right) / 2;
+                if (compareTeams(*lowestTeam, *sortedTeams[mid])) {
+                    right = mid;
+                } else {
+                    left = mid + 1;
+                }
             }
+            newIdx = left;
 
             if (newIdx < lowestIdx) {
                 // Output ranking changes
