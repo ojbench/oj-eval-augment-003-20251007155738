@@ -2,6 +2,7 @@
 #include <string>
 #include <vector>
 #include <map>
+#include <set>
 #include <algorithm>
 #include <sstream>
 
@@ -43,6 +44,7 @@ private:
     int problemCount = 0;
     vector<string> problemNames;
     int freezeTime = -1;
+    set<string> teamsWithFrozenProblems;  // Track teams with frozen problems
     
     void calculateTeamStats(Team& team, bool includeFrozen) {
         team.solvedCount = 0;
@@ -180,6 +182,7 @@ public:
         if (frozen && !ps.solved) {
             ps.frozenSubmissions++;
             ps.frozenSubs.push_back(sub);
+            teamsWithFrozenProblems.insert(teamName);
         } else if (!ps.solved) {
             if (status == "Accepted") {
                 ps.solved = true;
@@ -204,6 +207,7 @@ public:
             return;
         }
         frozen = true;
+        teamsWithFrozenProblems.clear();
 
         for (auto& name : teamOrder) {
             for (auto& p : teams[name].problems) {
@@ -234,31 +238,34 @@ public:
 
         printScoreboard();
 
-        // Build a sorted list of teams by ranking
+        // Build a sorted list of teams by current ranking
         vector<Team*> sortedTeams;
         for (auto& name : teamOrder) {
             sortedTeams.push_back(&teams[name]);
         }
-        sort(sortedTeams.begin(), sortedTeams.end(), [](Team* a, Team* b) {
-            return a->ranking < b->ranking;
-        });
+
+        auto teamComparator = [this](Team* a, Team* b) {
+            return compareTeams(*a, *b);
+        };
+
+        sort(sortedTeams.begin(), sortedTeams.end(), teamComparator);
+
+        // Assign rankings based on sorted order
+        for (size_t i = 0; i < sortedTeams.size(); i++) {
+            sortedTeams[i]->ranking = i + 1;
+        }
 
         // Unfreeze logic
-        while (true) {
-            // Find lowest ranked team with frozen problems using sorted list
+        while (!teamsWithFrozenProblems.empty()) {
+            // Find lowest ranked team with frozen problems
             Team* lowestTeam = nullptr;
+            int lowestIdx = -1;
 
             for (int i = sortedTeams.size() - 1; i >= 0; i--) {
                 Team* team = sortedTeams[i];
-                bool hasFrozen = false;
-                for (auto& p : team->problems) {
-                    if (p.second.frozenSubmissions > 0) {
-                        hasFrozen = true;
-                        break;
-                    }
-                }
-                if (hasFrozen) {
+                if (teamsWithFrozenProblems.count(team->name) > 0) {
                     lowestTeam = team;
+                    lowestIdx = i;
                     break;
                 }
             }
@@ -278,7 +285,6 @@ public:
 
             // Unfreeze this problem
             ProblemStatus& ps = lowestTeam->problems[smallestProblem];
-            int oldRank = lowestTeam->ranking;
 
             // Process frozen submissions for this problem
             for (auto& sub : ps.frozenSubs) {
@@ -295,30 +301,44 @@ public:
             ps.frozenSubmissions = 0;
             ps.frozenSubs.clear();
 
-            calculateTeamStats(*lowestTeam, false);
-
-            // Calculate new rank efficiently
-            int newRank = 1;
-            for (auto* team : sortedTeams) {
-                if (team != lowestTeam && compareTeams(*team, *lowestTeam)) {
-                    newRank++;
+            // Check if team still has frozen problems
+            bool stillHasFrozen = false;
+            for (auto& p : lowestTeam->problems) {
+                if (p.second.frozenSubmissions > 0) {
+                    stillHasFrozen = true;
+                    break;
                 }
             }
-
-            if (newRank < oldRank) {
-                // Find the team currently at the new rank position
-                string replacedTeamName = sortedTeams[newRank - 1]->name;
-
-                cout << lowestTeam->name << " " << replacedTeamName << " "
-                     << lowestTeam->solvedCount << " " << lowestTeam->penaltyTime << "\n";
+            if (!stillHasFrozen) {
+                teamsWithFrozenProblems.erase(lowestTeam->name);
             }
 
-            updateRankings();
+            calculateTeamStats(*lowestTeam, false);
 
-            // Re-sort the teams
-            sort(sortedTeams.begin(), sortedTeams.end(), [](Team* a, Team* b) {
-                return a->ranking < b->ranking;
-            });
+            // Find new position using binary search
+            int newIdx = lowestIdx;
+            while (newIdx > 0 && compareTeams(*lowestTeam, *sortedTeams[newIdx - 1])) {
+                newIdx--;
+            }
+
+            if (newIdx < lowestIdx) {
+                // Output ranking changes
+                string replacedTeamName = sortedTeams[newIdx]->name;
+                cout << lowestTeam->name << " " << replacedTeamName << " "
+                     << lowestTeam->solvedCount << " " << lowestTeam->penaltyTime << "\n";
+
+                // Move team to new position
+                Team* temp = sortedTeams[lowestIdx];
+                for (int i = lowestIdx; i > newIdx; i--) {
+                    sortedTeams[i] = sortedTeams[i - 1];
+                }
+                sortedTeams[newIdx] = temp;
+
+                // Update rankings
+                for (int i = newIdx; i <= lowestIdx; i++) {
+                    sortedTeams[i]->ranking = i + 1;
+                }
+            }
         }
 
         printScoreboard();
