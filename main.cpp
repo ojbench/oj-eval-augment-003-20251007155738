@@ -334,12 +334,8 @@ public:
                 cout << lowestTeam->name << " " << replacedTeamName << " "
                      << lowestTeam->solvedCount << " " << lowestTeam->penaltyTime << "\n";
 
-                // Move team to new position
-                Team* temp = sortedTeams[lowestIdx];
-                for (int i = lowestIdx; i > newIdx; i--) {
-                    sortedTeams[i] = sortedTeams[i - 1];
-                }
-                sortedTeams[newIdx] = temp;
+                // Move team to new position using rotate
+                rotate(sortedTeams.begin() + newIdx, sortedTeams.begin() + lowestIdx, sortedTeams.begin() + lowestIdx + 1);
 
                 // Update rankings
                 for (int i = newIdx; i <= lowestIdx; i++) {
